@@ -16,6 +16,10 @@ AI-Powered Diagnosis & Treatment: Integrates Gemini AI to provide structured ins
 
 Streamlit-Based UI: Provides an intuitive web interface for easy interaction.
 
+## Demo
+
+![image](https://github.com/user-attachments/assets/dd013b8e-bb93-46c4-be0c-f84a46b9e777)
+
 ## Local Development
 The environment.yml should be up-to-date with all dependencies, if not please notify.
 
