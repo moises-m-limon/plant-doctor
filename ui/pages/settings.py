@@ -5,6 +5,6 @@ st.title("Settings")
 
 if "user" in st.session_state:
     st.success(f"Logged in as {st.session_state.user['username']}")
-    st.page_link("ui/logout.py", label="Logout", icon="🚪")
+    st.page_link("pages/logout.py", label="Logout", icon="🚪")
 else:
     st.page_link("login.py", label="Login", icon="🔑")

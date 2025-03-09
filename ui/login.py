@@ -64,6 +64,28 @@ def login(email, password):
 # Streamlit UI
 st.set_page_config(page_title="Login / Sign-Up", layout="centered")
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #E8F5E9;
+    }
+    .stButton>button {
+        background-color: #2E7D32 !important;
+        color: white !important;
+        border-radius: 10px;
+        font-weight: bold;
+    }
+    .stTextInput>div>div>input {
+        background-color: #A5D6A7;
+        color: #1B5E20;
+        border-radius: 5px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 menu = st.pills("Choose how to access:", ["Login", "Sign Up"])
 
 if menu == "Sign Up":

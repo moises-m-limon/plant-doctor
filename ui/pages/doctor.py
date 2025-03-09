@@ -40,7 +40,7 @@ def preprocess_image(image):
     return transform(image).unsqueeze(0).to(device)
 
 # Streamlit UI
-st.title("🌱 Plant Disease Diagnosis AI")
+st.title("🌱 Dr. Plant: Plant Disease Diagnosis AI")
 
 uploaded_file = st.file_uploader("Upload an image of the plant", type=["jpg", "png", "jpeg"])
 
