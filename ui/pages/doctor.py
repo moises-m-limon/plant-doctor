@@ -19,7 +19,7 @@ genai.configure(api_key=GEMINI_KEY)
 
 # Connect to MongoDB
 client = pymongo.MongoClient(MONGO_URI)
-db = client["plant_diagnosis"]
+db = client["plant_doctor"]
 disease_collection = db["plant_diseases"]
 
 # Load trained model
