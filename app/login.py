@@ -1,47 +1,125 @@
+"""
+User authentication module for Dr. Plant.
+
+Handles user login, signup, password hashing, and API key encryption.
+"""
+
+import sys
+import os
+
+# Add app directory to path for imports
+sys.path.insert(0, os.path.dirname(__file__))
+
+from typing import Optional, Tuple, Dict, Any
 import streamlit as st
 from pymongo import MongoClient
+from pymongo.collection import Collection
 import bcrypt
 from cryptography.fernet import Fernet
 import time
-from config import ENCRYPTION_KEY, MONGO_URI
+from config import ENCRYPTION_KEY, MONGO_URI, DB_NAME, USERS_COLLECTION
 
-cipher = Fernet(ENCRYPTION_KEY)
+# Initialize encryption cipher
+cipher: Fernet = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
 
 # MongoDB Setup
-DB_NAME = "plant_doctor"
-COLLECTION_NAME = "users"
-
-client = MongoClient(MONGO_URI)
+client: MongoClient = MongoClient(MONGO_URI)
 db = client[DB_NAME]
-users_collection = db[COLLECTION_NAME]
+users_collection: Collection = db[USERS_COLLECTION]
 
-def hash_password(password):
+
+def hash_password(password: str) -> bytes:
+    """
+    Hash a password using bcrypt.
+
+    Args:
+        password: Plain text password to hash
+
+    Returns:
+        Hashed password as bytes
+    """
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
-def verify_password(password, hashed_password):
+
+def verify_password(password: str, hashed_password: bytes) -> bool:
+    """
+    Verify a password against its hash.
+
+    Args:
+        password: Plain text password to verify
+        hashed_password: Previously hashed password
+
+    Returns:
+        True if password matches, False otherwise
+    """
     return bcrypt.checkpw(password.encode(), hashed_password)
 
-def encrypt_gemini_key(api_key):
+
+def encrypt_gemini_key(api_key: str) -> str:
+    """
+    Encrypt a Gemini API key for secure storage.
+
+    Args:
+        api_key: Plain text Gemini API key
+
+    Returns:
+        Encrypted API key as string
+    """
     return cipher.encrypt(api_key.encode()).decode()
 
-def decrypt_gemini_key(encrypted_key):
+
+def decrypt_gemini_key(encrypted_key: str) -> str:
+    """
+    Decrypt a Gemini API key from storage.
+
+    Args:
+        encrypted_key: Encrypted API key string
+
+    Returns:
+        Decrypted API key as plain text
+    """
     return cipher.decrypt(encrypted_key.encode()).decode()
 
-def sign_up(username, email, password, company, gemini_key):
+
+def sign_up(
+    username: str,
+    email: str,
+    password: str,
+    company: str,
+    gemini_key: str
+) -> Tuple[str, Optional[str]]:
+    """
+    Register a new user account.
+
+    Args:
+        username: Desired username
+        email: User's email address
+        password: Plain text password
+        company: Company or farm name
+        gemini_key: User's Gemini API key
+
+    Returns:
+        Tuple of (message, error_field) where error_field is None on success
+        or the field name ("username" or "email") that caused an error
+    """
+    # Check for duplicate username
     if users_collection.find_one({"username": username}):
         return "Username is already taken!", "username"
+
+    # Check for duplicate email
     if users_collection.find_one({"email": email}):
         return "Email is already registered!", "email"
 
+    # Hash password and encrypt API key
     hashed_pw = hash_password(password)
-
     encrypted_gemini_key = encrypt_gemini_key(gemini_key)
-    st.session_state["gemini_key"] = encrypted_gemini_key 
+    st.session_state["gemini_key"] = encrypted_gemini_key
 
+    # Create user document
     user_data = {
         "username": username,
         "email": email,
-        "password": hashed_pw, 
+        "password": hashed_pw,
         "company": company,
         "gemini_key": encrypted_gemini_key
     }
@@ -49,14 +127,26 @@ def sign_up(username, email, password, company, gemini_key):
     users_collection.insert_one(user_data)
     return "Account created successfully!", None
 
-def login(email, password):
+
+def login(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Authenticate a user with email and password.
+
+    Args:
+        email: User's email address
+        password: Plain text password
+
+    Returns:
+        User document dict if authentication succeeds, None otherwise
+    """
     user = users_collection.find_one({"email": email})
     if user:
         stored_password = user["password"]
-        
+
+        # Handle password stored as string (legacy compatibility)
         if isinstance(stored_password, str):
             stored_password = stored_password.encode()
-        
+
         if verify_password(password, stored_password):
             return user
     return None
@@ -112,13 +202,16 @@ if menu == "Sign Up":
 
     if st.button("Sign Up", disabled=bool(username_error) or bool(email_error)):
         if username and email and password and company and gemini_key:
-            st.session_state["gemini_key"] = gemini_key 
             message, error_field = sign_up(username, email, password, company, gemini_key)
             if not error_field:
                 st.success(message)
-                time.sleep(1)  # Small delay before redirecting
+                # Set up session for authenticated user
                 st.session_state["user"] = {"username": username, "email": email}
-                st.rerun()  # Refresh to trigger login session
+                st.session_state["authenticated"] = True
+                st.session_state["gemini_key"] = gemini_key
+                time.sleep(1)
+                # Redirect to doctor page
+                st.switch_page("pages/doctor.py")
         else:
             st.error("All fields are required!")
 
@@ -133,24 +226,14 @@ elif menu == "Login":
         if user:
             st.session_state["user"] = user
             decrypted_gemini_key = decrypt_gemini_key(user["gemini_key"])
-            
-            # Store decrypted key in session state for use in settings
+
+            # Store decrypted key and set authenticated
+            st.session_state["authenticated"] = True
+            st.session_state["gemini_key"] = decrypted_gemini_key
             st.success(f"Welcome, {user['username']}!")
             time.sleep(1)
-            st.session_state["authenticated"] = True
-            st.session_state["gemini_key"] = decrypted_gemini_key  # Ensure Gemini key is stored
-            st.rerun()  # Ensures session state is set before navigation
+            # Redirect to doctor page
+            st.switch_page("pages/doctor.py")
 
         else:
             st.error("❌ Invalid email or password.")
-
-# If user is logged in, redirect to main page immediately
-if "user" in st.session_state:
-    st.session_state["authenticated"] = True
-    st.switch_page("pages/doctor.py")
-
-# If user is logged in, show API Key settings
-if "user" in st.session_state:
-    st.sidebar.subheader("Settings")
-    st.sidebar.text("Google Gemini API Key:")
-    st.sidebar.code(st.session_state["gemini_key"], language="plaintext")
