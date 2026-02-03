@@ -62,7 +62,7 @@ The training script automatically detects and uses available hardware accelerati
 
 ## Demo
 
-![image](https://github.com/user-attachments/assets/dd013b8e-bb93-46c4-be0c-f84a46b9e777)
+[![Watch the video](https://img.youtube.com/vi/EA7eSZVuYSM/maxresdefault.jpg)](https://youtu.be/EA7eSZVuYSM)
 
 ## Development Setup
 
